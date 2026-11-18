@@ -5,6 +5,7 @@ import { enhancements, kibicek, type Build, type Effect, type ScoreEvent } from 
 
 export const scoreValues: Record<Contract, { base: number; multiplier: number }> = {
   parti: { base: 100, multiplier: 1 }, ulti: { base: 200, multiplier: 3 }, betli: { base: 250, multiplier: 4 },
+  durchmars: { base: 280, multiplier: 2 },
 }
 export const upgradeValue = 40
 export const failurePenalty = 60

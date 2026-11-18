@@ -24,6 +24,7 @@ export function decode(raw: string | null): Run | null {
     const cards = [...hands.flat(), ...talon, ...trick.map(p => p.card), ...tricks.flatMap(t => t.plays.map(p => p.card))]
     if (cards.length !== 32 || new Set(cards.map(card => card.id)).size !== 32 ||
       cards.some(card => !deck.some(c => c.id === card.id && c.rank === card.rank && c.suit === card.suit))) return null
+    run.build.upgrades.durchmars ??= 0
     return run
   } catch {
     return null

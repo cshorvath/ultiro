@@ -12,7 +12,7 @@ export function Manual() {
     <section>
       <h3>2. Osztás és licit</h3>
       <p>Mindenki tíz lapot kap. Az első játékos felveszi a kétlapos <b>talont</b>, két lapot letesz, és vállalást tesz. Ezután passzolhatsz, emelhetsz talon nélkül, vagy felveheted a talont — ha felveszed, emelned kell. Két egymást követő passz lezárja a licitet. A legmagasabb licit játékosa a <b>felvállaló</b>, a többiek együtt védekeznek.</p>
-      <p>Növekvő licitsorrend: Parti, piros Parti, Ulti, Betli, piros Ulti, piros Betli. A piros Betlinek sincs aduja.</p>
+      <p>Növekvő licitsorrend: Parti, piros Parti, Ulti, Betli, Durchmarsch, piros Ulti, piros Betli, piros Durchmarsch. A piros Betli és a piros Durchmarsch is adu nélküli: a „piros” csak a licitet erősíti.</p>
     </section>
     <section>
       <h3>3. Így zajlik egy ütés</h3>
@@ -29,10 +29,11 @@ export function Manual() {
       <p><b>Parti:</b> felvállalóként több kártyapontot szerezz, mint a két védő együtt. Az ász, a tízes és az utolsó ütés egyenként 10 pont. A király–felső párokat a játék az első ütésben bejelenti: aduban 40, más színben 20. A talon pontjai a védőké. Amelyik oldal mind a tíz ütést elviszi, a pontoktól függetlenül nyer.</p>
       <p><b>Ulti:</b> a Parti mellett az utolsó ütést is nyerd meg az adu hetessel. A két vállalás külön teljesülhet. Az adu hetest őrizned kell, ameddig szabályosan megteheted.</p>
       <p><b>Betli:</b> felvállalóként egyetlen ütést se vigyél el. Nincs adu, de a színkövetés és a felülütés kötelező marad.</p>
+      <p><b>Durchmarsch:</b> felvállalóként mind a tíz ütést vidd el. Nincs adu vagy bemondott húsz/negyven. A védők már egyetlen ütéssel megbuktatják.</p>
     </section>
     <section>
       <h3>5. Futampont, korona és a bolt</h3>
-      <p>A kártyapont nem futampont. Sikeres felvállalóként a Parti alapja {scoreValues.parti.base} × {scoreValues.parti.multiplier}, az Ultié {scoreValues.ulti.base} × {scoreValues.ulti.multiplier}, a Betlié {scoreValues.betli.base} × {scoreValues.betli.multiplier}. Védőként akkor számít sikernek az osztás, ha legalább egy vállalást megbuktattok.</p>
+      <p>A kártyapont nem futampont. Sikeres felvállalóként a Parti alapja {scoreValues.parti.base} × {scoreValues.parti.multiplier}, az Ultié {scoreValues.ulti.base} × {scoreValues.ulti.multiplier}, a Betlié {scoreValues.betli.base} × {scoreValues.betli.multiplier}, a Durchmarsché {scoreValues.durchmars.base} × {scoreValues.durchmars.multiplier}. Védőként akkor számít sikernek az osztás, ha legalább egy vállalást megbuktattok.</p>
       <p>Az alaphoz előbb hozzáadódnak a pontbónuszok, majd jönnek a szorzók, a kerekítés és az esetleges {failurePenalty} pontos kudarc-levonás. Részben teljesített Ultiért is járhat pont. Az összesítést az osztás után a Pontbontás mutatja meg.</p>
       <p>A sikeres osztásokért és fordulókért koronát kapsz. A boltban legfeljebb öt aktív kibiced lehet. Vehetsz tartós vállalásfejlesztést, vagy kijelölhetsz egy lapot a pakliból, és javítást vehetsz rá. Ez a jutalmat módosítja, nem a lap erejét.</p>
     </section>

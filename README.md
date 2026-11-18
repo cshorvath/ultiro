@@ -21,8 +21,9 @@ Use **Kézikönyv** for the Hungarian player manual. The first run guides you th
 Reference: [Pagat’s Rablóulti rules and variants](https://www.pagat.com/marriage/ulti.html).
 
 - **Auction:** The deal is presented as 10/10/10 plus a two-card talon. The opener must pick up and bid, equivalent to having twelve cards before the opening discard. Later bidders can pass without seeing the talon, raise without the talon, or pick up and commit to raising after putting two back. Minor trump selection is entered with the bid for convenience but only revealed when play begins; hearts are announced. The prototype uses the historical two-pass close. `src/game/rules.ts` supports the modern three-pass close and configures the obligation to preserve the trump seven. The opener rotates in anticlockwise play order between deals.
-- **Tricks and settlement:** Declarer leads first. Follow suit, trump if void, and overtake if possible within those constraints, including over a partner. Tens rank below Alsó in Betli and above King in trump contracts. For Parti, both sides automatically announce eligible King–Felső pairs during the first trick; aces and tens in the talon go to the defenders. The side that sweeps wins regardless of points. An Ulti bid includes Parti and the separate last-trick trump-seven component. Betli requires zero tricks.
-- **Out of scope:** Kontra, traditional monetary settlement and unbid monetary bonuses, open contracts, 40–100, Durchmars and other compound bids. Hearts affects bid rank, not the run multiplier.
+- **Tricks and settlement:** Declarer leads first. Follow suit, trump if void, and overtake if possible within those constraints, including over a partner. Tens rank below Alsó without trumps and above King in trump contracts. For Parti, both sides automatically announce eligible King–Felső pairs during the first trick; aces and tens in the talon go to the defenders. The side that sweeps wins regardless of points. An Ulti bid includes Parti and the separate last-trick trump-seven component. Betli requires zero tricks.
+- **Durchmarsch:** The declarer has to win all ten tricks. Both closed bids are no-trump: regular Durchmarsch ranks above Betli and below red Ulti; red Durchmarsch outranks red Betli. Neither form uses card points or marriages. Both share the same run base (280 ×2 before bonuses).
+- **Out of scope:** Kontra, traditional monetary settlement and unbid monetary bonuses, open contracts, 40–100, and additional compound bids (including trump Durchmarsch). Red bids affect bid rank, not the run multiplier.
 
 ## Run scoring
 
@@ -35,9 +36,9 @@ Add base, contract upgrades and eligible bonuses first, then multiply all eligib
 | Milestone | Implementation |
 | --- | --- |
 | 1. Playable Parti | Pure seeded deck/deal and legal-move engine; heuristic opponents; React table |
-| 2. Auction and contracts | Talon exchange, ranked bids, separate Parti/Ulti settlement, no-trump Betli |
+| 2. Auction and contracts | Talon exchange, ranked bids, separate Parti/Ulti settlement, no-trump Betli and Durchmarsch |
 | 3. Run loop | Event-triggered Kibicek and enhancements, shop, three stages, boss, versioned saves |
 | 4. Presentation | Hungarian rules, legal-move hints, trick history, score breakdown, speed controls |
 | 5. Balance pass | Deterministic heuristic self-play; next step is human playtesting of bidding, shop choices and stage targets |
 
-The engine is framework-independent under `src/game/`. `src/game/ai.ts` gives the strategy only its own hand, public play and legal actions; the strategy never receives the table state. `src/ui/` renders and dispatches engine actions. `scripts/simulate.ts` runs the same heuristic in all three seats with a fixed shopping policy. The current baseline reaches stage two in **323/500** seeds, stage three in **228/500**, and wins **145/500**. Those are regression baselines, not predictions for human players.
+The engine is framework-independent under `src/game/`. `src/game/ai.ts` gives the strategy only its own hand, public play and legal actions; the strategy never receives the table state. `src/ui/` renders and dispatches engine actions. `scripts/simulate.ts` runs the same heuristic in all three seats with a fixed shopping policy. The current baseline reaches stage two in **324/500** seeds, stage three in **228/500**, and wins **143/500**. The bots won **8 of 14** declared Durchmarsch deals. These are regression baselines, not predictions for human players.

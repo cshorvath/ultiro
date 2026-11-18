@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { aiTurn } from './ai'
 import { deck, shuffled, type Card } from './cards'
 import { bidRank, evaluate, marriages, type Bid } from './contracts'
-import { bid, moves, newDeal, pass, pickup, play, type Deal } from './deal'
+import { availableBids, bid, moves, newDeal, pass, pickup, play, type Deal } from './deal'
 import { legalMoves, winningPlay, type Trick } from './rules'
 import { buy, leaveSummary, newRun, nextDeal, stages, withDeal } from './run'
 import { decode, encode } from './save'
@@ -11,6 +11,7 @@ import { scoreDeal } from './scoring'
 const c = (id: Card['id']) => deck.find(card => card.id === id)!
 const p = (id: Card['id'], seat: 0 | 1 | 2 = 0) => ({ card: c(id), seat })
 const offer: Bid = { kind: 'parti', trump: 'makk', doubled: false }
+const sweep: Bid = { kind: 'durchmars', trump: null, doubled: false }
 const ids = (value: ReturnType<typeof legalMoves>) => value.cards.map(card => card.id)
 function complete(deal: Deal) {
   for (let i = 0; i < 60 && deal.phase !== 'done'; i++) {
@@ -47,7 +48,7 @@ describe('deck and auction', () => {
     expect(deal.phase).toBe('play')
     expect(deal.turn).toBe(0)
   })
-  it('supports a three-pass auction and orders Ulti, Betli, heart Ulti and heart Betli', () => {
+  it('supports a three-pass auction and keeps the traditional bid order', () => {
     let [deal] = newDeal(1, 0, { passesToClose: 3, protectTrumpSeven: true })
     deal = pickup(deal)
     deal = bid(deal, offer, deal.hands[0].slice(0, 2).map(card => card.id))
@@ -56,9 +57,29 @@ describe('deck and auction', () => {
     expect([
       bidRank({ ...offer, kind: 'ulti' }),
       bidRank({ kind: 'betli', trump: null, doubled: false }),
+      bidRank(sweep),
       bidRank({ kind: 'ulti', trump: 'piros', doubled: true }),
       bidRank({ kind: 'betli', trump: null, doubled: true }),
-    ]).toEqual([3, 4, 5, 6])
+      bidRank({ ...sweep, doubled: true }),
+    ]).toEqual([4, 5, 6, 8, 10, 12])
+  })
+  it('lets Durchmarsch overcall Betli but not red Ulti, and closes above red Durchmarsch', () => {
+    let [deal] = newDeal(1, 0)
+    deal = pickup(deal)
+    deal = bid(deal, { kind: 'betli', trump: null, doubled: false }, deal.hands[0].slice(0, 2).map(card => card.id))
+    expect(availableBids(deal)).toContainEqual(sweep)
+    deal = bid(deal, { kind: 'ulti', trump: 'piros', doubled: true })
+    expect(bid(deal, sweep)).toBe(deal)
+    deal = bid(deal, { ...sweep, doubled: true })
+    expect(availableBids(deal)).toEqual([])
+    expect(pass(pass(deal)).declaration).toMatchObject({ kind: 'durchmars', trump: null, doubled: true })
+  })
+  it('returns the opening and remaining bids in ascending order, keeping equal suits together', () => {
+    let [deal] = newDeal(1, 0)
+    expect(availableBids(deal).map(bidRank)).toEqual([1, 1, 1, 2, 4, 4, 4, 5, 6, 8, 10, 12])
+    deal = pickup(deal)
+    deal = bid(deal, sweep, deal.hands[0].slice(0, 2).map(card => card.id))
+    expect(availableBids(deal).map(bidRank)).toEqual([8, 10, 12])
   })
 })
 
@@ -108,6 +129,18 @@ describe('trick play', () => {
       expect(new Set(cards.map(card => card.id)).size).toBe(32)
     }
   })
+  it('has the AI bid and play a no-trump Durchmarsch on a genuine strong hand', () => {
+    const [initial] = newDeal(1, 0)
+    const top = ['Á', 'K', 'F', 'A', 'X']
+    const strong = deck.filter(card => (card.suit === 'piros' || card.suit === 'makk') && top.includes(card.rank))
+    const outside = deck.filter(card => !strong.includes(card))
+    const auction = aiTurn({ ...initial, hands: [strong, outside.slice(0, 10), outside.slice(10, 20)], talon: outside.slice(20) })
+    expect(auction.declaration).toMatchObject({ kind: 'durchmars', declarer: 0, trump: null })
+    expect(auction.hands[0]).toEqual(strong)
+    const final = complete(pass(pass(auction)))
+    expect(final.announced).toEqual([0, 0, 0])
+    expect(final.tricks.map(trick => trick.winner)).toEqual(Array(10).fill(0))
+  })
 })
 
 // Focused settlement fixture; these completed trick records need not be an actual deal.
@@ -140,9 +173,30 @@ describe('contract settlement', () => {
     expect(evaluate(betli, outcomes(1), [], [0, 0, 0]).components[0].success).toBe(true)
     expect(evaluate(betli, outcomes(0), [], [0, 0, 0]).components[0].success).toBe(false)
   })
+  it.each([false, true])('requires all ten tricks in Durchmarsch (red: %s)', doubled => {
+    const declaration = { ...sweep, declarer: 0, doubled } as const
+    expect(evaluate(declaration, outcomes(0), [c('tok-X')], [0, 0, 0])).toEqual({
+      components: [{ kind: 'durchmars', success: true }], declarerTricks: 10,
+      declarerPoints: null, defenderPoints: null,
+    })
+    expect(evaluate(declaration, outcomes(0, { winner: 1, plays: [p('makk-Á', 1)] }), [], [0, 0, 0]))
+      .toMatchObject({ components: [{ kind: 'durchmars', success: false }], declarerTricks: 9 })
+  })
 })
 
 describe('roguelike scoring and persistence', () => {
+  it('scores a Durchmarsch using its own upgrade and rewards a defender for breaking it', () => {
+    const run = newRun(5)
+    const build = { ...run.build, kibicek: [], upgrades: { ...run.build.upgrades, durchmars: 1 } }
+    const fixture: Deal = { ...run.deal, phase: 'done', declaration: { ...sweep, declarer: 0 }, tricks: outcomes(0) }
+    const win = scoreDeal(fixture, build, run.seed)
+    expect(win.success).toBe(true)
+    expect(win.multiplier).toBe(2)
+    expect(win.additive.slice(0, 2).map(line => line.value)).toEqual([280, 40])
+    const defended: Deal = { ...fixture, declaration: { ...sweep, declarer: 1 },
+      tricks: outcomes(1, { winner: 0, plays: [p('makk-Á')] }) }
+    expect(scoreDeal(defended, build, run.seed)).toMatchObject({ success: true, score: 192 })
+  })
   it('adds before multiplying, triggers a seeded enhancement and blocks only the first Kibic at the boss', () => {
     const run = newRun(3)
     const trick = { winner: 0, plays: [p('piros-Á')] } as const satisfies Trick
@@ -193,5 +247,11 @@ describe('roguelike scoring and persistence', () => {
     expect(decode(encode(mid).replace('"version":1', '"version":2'))).toBeNull()
     expect(decode(encode({ ...mid, deal: { ...mid.deal, hands: [[], [], []] } }))).toBeNull()
     expect(decode('{broken')).toBeNull()
+  })
+  it('adds a zero-level Durchmarsch upgrade to existing saves', () => {
+    const run = newRun(13)
+    const oldSave = encode(run).replace(',"durchmars":0', '')
+    expect(oldSave).not.toContain('"durchmars"')
+    expect(decode(oldSave)).toEqual(run)
   })
 })

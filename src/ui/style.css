@@ -68,6 +68,7 @@ progress { width: 100%; accent-color: var(--gold); height: .72rem; }
 .contract { margin: .25rem 0 .45rem; min-height: 56px; }
 .contract strong { display: block; font-family: Georgia, serif; font-size: 1.4rem; }
 .contract small, .table-center p { color: #efe0bb; }
+.contract .sweep-progress { margin-top: .15rem; color: var(--gold); font-weight: 700; }
 .table-center { min-height: 11rem; display: grid; align-content: center; justify-items: center; }
 .table-center p { margin: .5rem 0; font-size: .94rem; }
 .trick { display: flex; gap: .65rem; align-items: center; justify-content: center; min-height: 8.7rem; }
@@ -106,8 +107,20 @@ button.card:hover:not(:disabled), .card.selected { transform: translateY(-3px); 
 .card kbd { position: absolute; top: -4px; right: -3px; border-radius: 4px; background: #291a14; color: #ffdfaa; padding: 0 4px; font-size: .72rem; }
 .card.golden, .card.glass, .card.lucky, .card.sealed { border: 2px solid #a06b14; }
 .card.glass { border-color: #4b918c; }.card.lucky { border-color: #45804c; }.card.sealed { border-color: #935875; }
-.bid-controls { display: flex; flex-wrap: wrap; gap: .32rem; padding-top: .45rem; }
+.bid-controls { display: grid; gap: .55rem; padding-top: .45rem; }
 .bid-controls button { font-size: .94rem; }
+.bid-actions, .bid-list, .bid-group { display: flex; flex-wrap: wrap; gap: .35rem; }
+.bid-list { list-style: none; margin: 0; padding: 0; gap: .4rem; }
+.bid-group { align-items: center; padding: .25rem; border: 1px solid var(--edge); border-radius: 8px; background: #241611; }
+.bid-rank { min-width: 1.8rem; text-align: center; color: var(--gold); font: 800 .9rem/1.25 ui-monospace, monospace; }
+.bid-empty { margin: 0; color: var(--muted); }
+.bid-label { display: inline-flex; align-items: center; gap: .3em; vertical-align: baseline; }
+.suit-symbol { display: inline-block; width: 1.15em; height: 1.15em; vertical-align: -.17em; flex: none; fill: currentColor; }
+.suit-symbol.piros { color: #f48a73; }
+.suit-symbol.tok { color: #f6c767; }
+.suit-symbol.zold { color: #98d5a0; }
+.suit-symbol.makk { color: #e0b183; }
+.suit-detail { fill: none; stroke: #38231a; stroke-width: 1.25; stroke-linecap: round; }
 .log { padding: .65rem .9rem; }
 summary { cursor: pointer; color: #ffd18b; }
 .log ol { padding-left: 1.4rem; max-height: 240px; overflow: auto; color: var(--muted); font-size: .88rem; }

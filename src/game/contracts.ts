@@ -1,22 +1,27 @@
 import { cardPoints, suits, type Card, type Seat, type Suit } from './cards'
 import type { Trick } from './rules'
 
-export type Contract = 'parti' | 'ulti' | 'betli'
+export type Contract = 'parti' | 'ulti' | 'betli' | 'durchmars'
 export type Bid =
   | { kind: 'parti' | 'ulti'; trump: Suit; doubled: boolean }
-  | { kind: 'betli'; trump: null; doubled: boolean }
+  | { kind: 'betli' | 'durchmars'; trump: null; doubled: boolean }
 export type Declaration = Bid & { declarer: Seat }
-export const contractNames: Record<Contract, string> = { parti: 'Parti', ulti: 'Ulti', betli: 'Betli' }
-export const bids: Bid[] = [
+export const contractNames: Record<Contract, string> = { parti: 'Parti', ulti: 'Ulti', betli: 'Betli', durchmars: 'Durchmarsch' }
+
+// Auction values, not roguelike scores. The Parti component of an Ulti does not raise its rank.
+const auctionValues: Record<Contract, number> = { parti: 1, ulti: 4, betli: 5, durchmars: 6 }
+export const bidRank = (bid: Bid) => auctionValues[bid.kind] * (bid.doubled ? 2 : 1)
+
+export const bids: readonly Bid[] = ([
   ...suits.flatMap((trump): Bid[] => [
     { kind: 'parti', trump, doubled: trump === 'piros' },
     { kind: 'ulti', trump, doubled: trump === 'piros' },
   ]),
   { kind: 'betli', trump: null, doubled: false },
   { kind: 'betli', trump: null, doubled: true },
-]
-export const bidRank = (bid: Bid) =>
-  ({ parti: 1, ulti: 3, betli: 4 })[bid.kind] + (bid.doubled ? (bid.kind === 'parti' ? 1 : 2) : 0)
+  { kind: 'durchmars', trump: null, doubled: false },
+  { kind: 'durchmars', trump: null, doubled: true },
+] satisfies Bid[]).sort((a, b) => bidRank(a) - bidRank(b))
 
 export function marriages(hand: readonly Card[], trump: Suit | null): number {
   return trump === null ? 0 : suits.reduce((sum, suit) =>
@@ -35,8 +40,9 @@ export function evaluate(declaration: Declaration, tricks: readonly Trick[], tal
   if (tricks.length !== 10) throw new Error('Contract evaluation requires ten tricks')
   const { declarer, trump, kind } = declaration
   const won = tricks.filter(trick => trick.winner === declarer).length
-  if (kind === 'betli') {
-    return { components: [{ kind, success: won === 0 }], declarerPoints: null, defenderPoints: null, declarerTricks: won }
+  if (kind === 'betli' || kind === 'durchmars') {
+    const success = won === (kind === 'betli' ? 0 : tricks.length)
+    return { components: [{ kind, success }], declarerPoints: null, defenderPoints: null, declarerTricks: won }
   }
   let declarerPoints = announced[declarer]
   let defenderPoints = announced.reduce((sum, value, seat) => seat === declarer ? sum : sum + value, 0)

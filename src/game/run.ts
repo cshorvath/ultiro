@@ -27,7 +27,7 @@ export type Run = {
 export function newRun(seed: number, rules: Rules = defaultRules): Run {
   const [deal, cursor] = newDeal(seed, 0, rules)
   return { phase: 'deal', stage: 0, total: 0, used: 0, opener: 0, coins: 2, seed: cursor,
-    build: { kibicek: ['fox'], enhancements: {}, upgrades: { parti: 0, ulti: 0, betli: 0 }, shieldUsed: false },
+    build: { kibicek: ['fox'], enhancements: {}, upgrades: { parti: 0, ulti: 0, betli: 0, durchmars: 0 }, shieldUsed: false },
     deal, last: null, stock: [] }
 }
 

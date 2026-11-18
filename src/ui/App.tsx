@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { aiTurn } from '../game/ai'
 import { cardName, deck, names, sorted, type Card } from '../game/cards'
-import { contractNames, type Bid } from '../game/contracts'
+import { bidRank, contractNames, type Bid } from '../game/contracts'
 import { availableBids, bid, moves, pass, pickup, play, type Deal } from '../game/deal'
 import { kibicek } from '../game/effects'
 import { buy, dismiss, leaveSummary, newRun, nextDeal, stages, withDeal, type Run } from '../game/run'
@@ -10,12 +10,13 @@ import { scoreValues } from '../game/scoring'
 import { describe, itemKey } from '../game/shop'
 import { Manual } from './Manual'
 import { BrandMark, CardBacks, PlayingCard } from './PlayingCard'
+import { SuitSymbol } from './SuitSymbol'
 import { isTutorialDeal, practiceSeed, tutorialStep, tutorialStorageKey } from './tutorial'
 
 const players = ['Te', 'Ilonka', 'Bandi']
 const num = (n: number) => n.toLocaleString('hu-HU', { maximumFractionDigits: 2 })
-const bidName = (bid: Bid, reveal = false) => bid.kind === 'betli'
-  ? bid.doubled ? 'Piros betli' : 'Betli'
+const bidName = (bid: Bid, reveal = false) => bid.trump === null
+  ? bid.doubled ? `Piros ${contractNames[bid.kind].toLocaleLowerCase('hu')}` : contractNames[bid.kind]
   : `${contractNames[bid.kind]}${reveal ? ` · ${names[bid.trump]}` : bid.doubled ? ' · Piros' : ''}`
 const reasons = {
   lead: 'Te hívsz: bármelyik lapot kijátszhatod.',
@@ -54,7 +55,11 @@ export function App() {
   const guiding = !!run && (practiceRun !== null || (firstRunGuide && isTutorialDeal(run)))
   const guide = guiding ? tutorialStep(run, discard.length) : null
   const deal = run?.deal
+  const declaration = deal?.declaration
+  const sweepWins = deal && declaration?.kind === 'durchmars'
+    ? deal.tricks.filter(trick => trick.winner === declaration.declarer).length : null
   const playerTurn = run?.phase === 'deal' && deal?.turn === 0
+  const offers = deal?.phase === 'auction' && playerTurn ? availableBids(deal) : []
   const currentMoves = deal && playerTurn ? moves(deal) : null
   const hand = sorted(deal?.hands[0] ?? [])
   const stage = run && stages[run.stage]
@@ -186,8 +191,13 @@ export function App() {
             </div>)}</div>
             <div className="contract">
               <span className="eyebrow">{deal.phase === 'auction' ? 'LICIT' : `${deal.tricks.length + 1}. ÜTÉS / 10`}</span>
-              {deal.declaration && <><strong>{bidName(deal.declaration, deal.phase === 'play')}</strong>
-                {deal.phase === 'play' && <small>{deal.declaration.trump ? `Adu: ${names[deal.declaration.trump]}` : 'Nincs adu'} · {players[deal.declaration.declarer]} · ×{deal.declaration.declarer === 0 ? scoreValues[deal.declaration.kind].multiplier : 1} alap</small>}</>}
+              {deal.declaration && <><strong><BidLabel offer={deal.declaration} reveal={deal.phase === 'play'} /></strong>
+                {deal.phase === 'auction' && <small>Licitérték: {bidRank(deal.declaration)}</small>}
+                {deal.phase === 'play' && <small>{deal.declaration.trump
+                  ? <>Adu: <SuitSymbol suit={deal.declaration.trump} /></> : 'Nincs adu'} · {players[deal.declaration.declarer]} · ×{deal.declaration.declarer === 0 ? scoreValues[deal.declaration.kind].multiplier : 1} alap</small>}</>}
+              {deal.phase === 'play' && sweepWins !== null && <small className="sweep-progress">
+                {sweepWins}/10 ütés a felvállalónál{deal.tricks.length > sweepWins ? ' · a vállalás már elbukott' : ' · mind a tíz kell'}
+              </small>}
             </div>
             {deal.phase === 'auction' ? <div className="table-center">
               <CardBacks count={deal.talon.length} talon />
@@ -213,17 +223,18 @@ export function App() {
               legal={!!playerTurn && (deal.phase === 'auction' ? deal.pickedUp : !!currentMoves?.cards.some(c => c.id === card.id))}
               onClick={() => pickCard(card)} />)}</div>
             {playerTurn && deal.phase === 'auction' && <div className="bid-controls">
-              {!deal.pickedUp && !!availableBids(deal).length && <button className="primary" onClick={() => act(pickup)}>Talon felvétele</button>}
-              {!deal.pickedUp && deal.declaration && <button onClick={() => act(pass)}>Passz</button>}
-              {(deal.declaration || deal.pickedUp) && availableBids(deal).map(offer => <button
-                key={`${offer.kind}:${offer.trump}:${offer.doubled}`} disabled={deal.pickedUp && discard.length !== 2}
-                onClick={() => submitBid(offer)}>{bidName(offer, true)}</button>)}
+              {!deal.pickedUp && <div className="bid-actions">
+                {!!offers.length && <button className="primary" onClick={() => act(pickup)}>Talon felvétele</button>}
+                {deal.declaration && <button onClick={() => act(pass)}>Passz</button>}
+              </div>}
+              {(deal.declaration || deal.pickedUp) && <BidOptions offers={offers}
+                disabled={deal.pickedUp && discard.length !== 2} onBid={submitBid} />}
             </div>}
           </section>
           <GameLog deal={deal} />
         </>}
         {run.phase === 'summary' && run.last && deal.declaration && <section className="panel screen">
-          <p className="eyebrow">OSZTÁS EREDMÉNYE · {bidName(deal.declaration, true)}</p>
+          <p className="eyebrow">OSZTÁS EREDMÉNYE · <BidLabel offer={deal.declaration} reveal /></p>
           <h1>{run.last.success ? 'Sikerült!' : 'Ez most elment.'}</h1>
           <p>Felvállaló: {players[deal.declaration.declarer]} · {run.last.result.declarerTricks} megszerzett ütés</p>
           <ul>{run.last.result.components.map(c => <li key={c.kind}>{contractNames[c.kind]}: {c.success ? 'teljesült' : 'nem teljesült'}</li>)}</ul>
@@ -278,9 +289,41 @@ export function App() {
   </div>
 }
 
+function BidLabel({ offer, reveal = false, decorative = false }: { offer: Bid; reveal?: boolean; decorative?: boolean }) {
+  if (!offer.trump) return bidName(offer)
+  return <span className="bid-label">{contractNames[offer.kind]}{(reveal || offer.doubled) &&
+    <SuitSymbol suit={offer.trump} decorative={decorative} />}</span>
+}
+
+function BidOptions({ offers, disabled, onBid }: { offers: Bid[]; disabled: boolean; onBid: (offer: Bid) => void }) {
+  const groups = new Map<number, Bid[]>()
+  for (const offer of offers) {
+    const rank = bidRank(offer)
+    const group = groups.get(rank)
+    if (group) group.push(offer)
+    else groups.set(rank, [offer])
+  }
+  if (!groups.size) return <p className="bid-empty">Nincs magasabb licit.</p>
+  return <section className="bid-options" aria-label="Licitálható vállalások">
+    <p className="eyebrow">LICITÉRTÉK · NÖVEKVŐ SORREND</p>
+    <ol className="bid-list" role="list">
+      {Array.from(groups, ([rank, group]) => <li key={rank}>
+        <div className="bid-group" role="group" aria-label={`Licitérték: ${rank}`}>
+          <span className="bid-rank" aria-hidden="true">{rank}</span>
+          {group.map(offer => <button key={`${offer.kind}:${offer.trump}:${offer.doubled}`} disabled={disabled}
+            aria-label={bidName(offer, true)}
+            title={offer.trump ? `Adu: ${names[offer.trump]}` : offer.kind === 'durchmars'
+              ? 'Adu nélkül mind a tíz ütést el kell vinned.' : 'Adu nélkül nem vihetsz el egyetlen ütést sem.'}
+            onClick={() => onBid(offer)}><BidLabel offer={offer} reveal decorative /></button>)}
+        </div>
+      </li>)}
+    </ol>
+  </section>
+}
+
 function GameLog({ deal }: { deal: Deal }) {
   return <details className="panel log"><summary>Játéknapló</summary>
-    <ol>{deal.auction.map(({ seat, bid }, i) => <li key={i}>{players[seat]}: {bid ? bidName(bid) : 'passz'}</li>)}
+    <ol>{deal.auction.map(({ seat, bid }, i) => <li key={i}>{players[seat]}: {bid ? <BidLabel offer={bid} /> : 'passz'}</li>)}
       {deal.announced.map((value, seat) => value > 0 && <li key={`a${seat}`}>{players[seat]}: {value} bemondott kártyapont</li>)}
       {deal.tricks.map((trick, i) => <li key={`t${i}`}>{i + 1}. ütés: {trick.plays.map(p => `${players[p.seat]} – ${cardName(p.card)}`).join(' · ')}. Nyertes: {players[trick.winner]}.</li>)}</ol>
   </details>
