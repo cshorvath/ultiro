@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { aiTurn } from '../game/ai'
 import { cardName, deck, names, sorted, type Card } from '../game/cards'
 import { bidRank, contractNames, type Bid } from '../game/contracts'
@@ -62,9 +62,18 @@ export function App() {
   const offers = deal?.phase === 'auction' && playerTurn ? availableBids(deal) : []
   const currentMoves = deal && playerTurn ? moves(deal) : null
   const hand = sorted(deal?.hands[0] ?? [])
+  const takingTalon = !!playerTurn && deal?.phase === 'auction' && deal.pickedUp
+  const handRef = useRef<HTMLDivElement>(null)
   const stage = run && stages[run.stage]
   const latest = deal?.tricks.at(-1)
   const visible = deal?.trick.length ? deal.trick : latest?.plays ?? []
+
+  useLayoutEffect(() => {
+    const element = handRef.current
+    if (!takingTalon || !element) return
+    element.focus({ preventScroll: true })
+    element.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+  }, [takingTalon])
 
   useEffect(() => {
     if (!savedRun) return
@@ -184,7 +193,7 @@ export function App() {
       <div className="main-column">
         {run.phase !== 'deal' && coach}
         {run.phase === 'deal' && <>
-          <section className="table" aria-label="Játékasztal">
+          <section className={`table${takingTalon ? ' table--talon-in-hand' : ''}`} aria-label="Játékasztal">
             <div className="opponents">{([2, 1] as const).map(seat => <div key={seat} className={`opponent${deal.turn === seat ? ' active' : ''}`}>
               <b>{players[seat]}</b><small>{deal.declaration?.declarer === seat && deal.phase !== 'auction' ? 'Felvállaló · ' : ''}{deal.hands[seat].length} lap</small>
               <CardBacks count={Math.min(5, deal.hands[seat].length)} />
@@ -200,7 +209,7 @@ export function App() {
               </small>}
             </div>
             {deal.phase === 'auction' ? <div className="table-center">
-              <CardBacks count={deal.talon.length} talon />
+              {!!deal.talon.length && <CardBacks count={deal.talon.length} talon />}
               <p>{deal.pickedUp ? 'A talon az aktuális licitáló kezében van.' : 'Két lap a talonban.'}</p>
             </div> : <div className="table-center">
               <div className="trick" key={`${deal.tricks.length}:${deal.trick.length > 0}`}>
@@ -218,7 +227,9 @@ export function App() {
             <p className="turn" aria-live="polite">{!playerTurn ? `${players[deal.turn]} következik…` : deal.phase === 'play'
               ? reasons[currentMoves!.reason] : deal.pickedUp ? `Jelölj ki két lapot a talonba, majd licitálj. (${discard.length}/2)`
               : deal.declaration ? 'Passzolhatsz, vagy emelhetsz. Ha felveszed a talont, emelned kell.' : 'Elsőként kötelező licitálnod. Vedd fel a talont!'}</p>
-            <div className="hand">{hand.map((card, i) => <PlayingCard key={card.id} card={card} index={i}
+            <div ref={handRef} className={`hand${takingTalon ? ' hand--talon' : ''}`} role="group"
+              aria-label={`${hand.length} lap a kezedben`} tabIndex={takingTalon ? -1 : undefined}>
+              {hand.map((card, i) => <PlayingCard key={card.id} card={card} index={i}
               enhancement={run.build.enhancements[card.id]} selected={deal.phase === 'auction' ? discard.includes(card.id) : undefined}
               legal={!!playerTurn && (deal.phase === 'auction' ? deal.pickedUp : !!currentMoves?.cards.some(c => c.id === card.id))}
               onClick={() => pickCard(card)} />)}</div>

@@ -71,6 +71,7 @@ progress { width: 100%; accent-color: var(--gold); height: .72rem; }
 .contract .sweep-progress { margin-top: .15rem; color: var(--gold); font-weight: 700; }
 .table-center { min-height: 11rem; display: grid; align-content: center; justify-items: center; }
 .table-center p { margin: .5rem 0; font-size: .94rem; }
+.table.table--talon-in-hand, .table--talon-in-hand .contract, .table--talon-in-hand .table-center { min-height: 0; }
 .trick { display: flex; gap: .65rem; align-items: center; justify-content: center; min-height: 8.7rem; }
 .trick > div { animation: deal-in .2s ease-out; }
 .trick .card { width: clamp(76px, 7.5vw, 108px); }
@@ -90,10 +91,29 @@ progress { width: 100%; accent-color: var(--gold); height: .72rem; }
 .coach p:last-child { margin: .35rem 0 0; }
 .coach button { font-size: .82rem; }
 .controls .coach { margin-bottom: .65rem; }
-.hand { display: flex; align-items: flex-start; gap: clamp(5px, .6vw, 10px); overflow-x: auto; padding: 6px 5px 10px; min-height: 8rem; }
+.hand {
+  --hand-columns: 10;
+  --hand-card-max: 116px;
+  display: grid;
+  grid-template-columns: repeat(var(--hand-columns), minmax(0, var(--hand-card-max)));
+  align-items: start; gap: clamp(5px, .6vw, 10px); padding: 6px 5px 10px; min-height: 8rem;
+}
+.hand--talon { --hand-columns: 12; }
+.hand .card { width: 100%; min-width: 0; }
+.hand .card-foot, .hand .card-enhancement { white-space: normal; overflow-wrap: anywhere; }
+
+@container (max-width: 850px) {
+  .hand--talon { --hand-columns: 6; --hand-card-max: clamp(48px, calc((100dvh - 5rem) / 3.25), 116px); }
+}
+@container (max-width: 650px) {
+  .hand:not(.hand--talon) { --hand-columns: 5; }
+}
+@container (max-width: 450px) {
+  .hand, .hand:not(.hand--talon) { --hand-columns: 4; }
+  .hand--talon { --hand-card-max: clamp(48px, calc((100dvh - 6rem) / 4.86), 116px); }
+}
 .card {
-  display: block; flex: 0 0 auto;
-  position: relative; width: clamp(78px, 8.9cqw, 116px);
+  display: block; position: relative;
   padding: 3px; border-radius: 7px; color: var(--ink); text-align: center;
   background: linear-gradient(145deg, #fff0d0, #e8cc96); border: 1px solid #be9862; box-shadow: 0 3px 0 #9e7545;
   transition: transform .15s ease, box-shadow .15s ease;
@@ -152,8 +172,6 @@ footer a { color: inherit; }
 @media (max-width: 850px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
   .rail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .hand { flex-wrap: wrap; }
-  .card { width: clamp(76px, 22cqw, 108px); }
   .table { min-height: 340px; }
   .trick .card { width: clamp(65px, 20vw, 100px); }
 }
